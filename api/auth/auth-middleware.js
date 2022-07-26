@@ -18,14 +18,18 @@ const restricted = (req, res, next) => {
 
     Put the decoded token in the req object, to make life easier for middlewares downstream!
   */
-  jwt.verify(req.headers.authorization, JWT_SECRET, (err, decodedToken) => {
+  const token = req.headers.authorization
+  if (!token) {
+    return next({ status: 401, message: 'Token required' })
+  }
+  jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
     if (err) {
-      res.status(401).json({ message: 'Token required' });
-      return;
+      next({ status: 401, message: 'Token invalid' })
+    } else {
+      req.decodedToken = decodedToken
+      next()
     }
-    req.jwt = decodedToken;
-    next();
-  });
+  })
 }
 
 const only = role_name => (req, res, next) => {
@@ -39,11 +43,13 @@ const only = role_name => (req, res, next) => {
 
     Pull the decoded token from the req object, to avoid verifying it again!
   */
-  if (req.jwt.role_name != role_name) {
-    res.status(403).json({ message: 'This is not for you' })
-    return;
+    const roleName = req.decodedToken.role_name
+
+  if (role_name === req.decodedToken.role_name) {
+    next()
+  }else{
+    next({ status: 403, message: 'This is not for you'})
   }
-  next()
 }
 
 
@@ -56,13 +62,13 @@ async function checkUsernameExists(req, res, next) {
     }
   */
   try {
-    const users = await Users.findBy({ username: req.body.username })
-    if (users.length) {
-      req.user = user[0]
-      next()
+    const [user] = await Users.findBy({ username: req.body.username })
+    if (!user) {
+      next({ status: 401, message: 'Invalid credentials' })
     }
     else {
-      next({ message: 'Invalid credentials', status: 401 })
+      req.user = user
+      next()
     }
   } catch (err) {
     next(err)
@@ -96,7 +102,8 @@ const validateRoleName = (req, res, next) => {
     next({ status: 422, message: 'Role name can not be admin' })
   } else if (req.body.role_name.trim().length > 32) {
     next({ status: 422, message: 'Role name can not be longer than 32 chars' })
-  }else{
+  } else {
+    req.role_name = req.body.role_name.trim()
     next()
   }
 }
