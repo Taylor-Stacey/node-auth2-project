@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const { checkUsernameExists, validateRoleName } = require('./auth-middleware');
-const { BCRYPT_ROUNDS ,JWT_SECRET } = require("../secrets"); // use this secret!
+const { BCRYPT_ROUNDS , JWT_SECRET } = require("../secrets"); // use this secret!
 
 router.post("/register", validateRoleName, (req, res, next) => {
   /**

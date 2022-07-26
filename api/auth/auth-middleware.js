@@ -18,14 +18,14 @@ const restricted = (req, res, next) => {
 
     Put the decoded token in the req object, to make life easier for middlewares downstream!
   */
- jwt.verify(req.headers.authorization, JWT_SECRET, (err, decodedToken) => {
-  if(err){
-    res.status(401).json({message: 'Token required'});
-    return;
-  }
-  req.jwt = decodedToken;
-  next();
- });
+  jwt.verify(req.headers.authorization, JWT_SECRET, (err, decodedToken) => {
+    if (err) {
+      res.status(401).json({ message: 'Token required' });
+      return;
+    }
+    req.jwt = decodedToken;
+    next();
+  });
 }
 
 const only = role_name => (req, res, next) => {
@@ -39,15 +39,15 @@ const only = role_name => (req, res, next) => {
 
     Pull the decoded token from the req object, to avoid verifying it again!
   */
- if(req.jwt.role_name != role_name){
-  res.status(403).json({ message: 'This is not for you'})
-  return;
- }
- next()
+  if (req.jwt.role_name != role_name) {
+    res.status(403).json({ message: 'This is not for you' })
+    return;
+  }
+  next()
 }
 
 
-async function checkUsernameExists (req, res, next) {
+async function checkUsernameExists(req, res, next) {
   /*
     If the username in req.body does NOT exist in the database
     status 401
@@ -55,18 +55,18 @@ async function checkUsernameExists (req, res, next) {
       "message": "Invalid credentials"
     }
   */
- try{
-  const users = await Users.findBy({ username: req.body.username })
-  if(users.length){
-    req.user = user[0]
-    next()
+  try {
+    const users = await Users.findBy({ username: req.body.username })
+    if (users.length) {
+      req.user = user[0]
+      next()
+    }
+    else {
+      next({ message: 'Invalid credentials', status: 401 })
+    }
+  } catch (err) {
+    next(err)
   }
-  else{
-    next({ message: 'Invalid credentials', status: 401})
-  }
- }catch (err){
-   next(err)
- }
 }
 
 
@@ -89,7 +89,16 @@ const validateRoleName = (req, res, next) => {
       "message": "Role name can not be longer than 32 chars"
     }
   */
- next()
+  if (!req.body.role_name || !req.body.role_name.trim()) {
+    req.role_name = 'student'
+    next()
+  } else if (req.body.role_name.trim() === 'admin') {
+    next({ status: 422, message: 'Role name can not be admin' })
+  } else if (req.body.role_name.trim().length > 32) {
+    next({ status: 422, message: 'Role name can not be longer than 32 chars' })
+  }else{
+    next()
+  }
 }
 
 module.exports = {
